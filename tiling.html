@@ -1,0 +1,217 @@
+<html>
+<head>
+<style>
+
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+body {
+    line-height: 1;
+}
+ol, ul {
+    list-style: none;
+}
+blockquote, q {
+    quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+table {
+    border-collapse: collapse;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<button onclick="randomize()">Random</button>
+<!--<button onclick="save()">Save</button>-->
+<p id="text">
+</p>
+<table id="tiling">
+</table>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<script type="text/javascript">
+
+var cm = 2;
+
+//room dimension
+var width = 310 * cm;
+var height = 435 * cm;
+
+var size = 30 * cm;
+
+var stock = [6*7-4, 4*7-5, 4*7-4, 6*7,6*7-4];
+var colors = ["spring_buds","petrol","laguna","scarlet","rosemary_green"];
+var tiles = [];
+
+function qs(key) {
+    key = key.replace(/[*+?^$.\[\]{}()|\\\/]/g, "\\$&"); // escape RegEx meta chars
+    var match = location.search.match(new RegExp("[?&]"+key+"=([^&]+)(&|$)"));
+    return match && decodeURIComponent(match[1].replace(/\+/g, " "));
+}
+
+function shuffle(array) {
+  var currentIndex = array.length, temporaryValue, randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}
+
+function encode() {
+	var buf = "";
+	$("td").each(function (idx, e) {
+		buf += $(e).find("img").data("code");
+	});
+	return buf
+}
+
+function decode(buf) {
+	var tds = $("td");
+	for (var i = 0; i < buf.length; i++) {
+		var code = buf[i];
+		var img = $(tds[i]).find("img");
+		var color = colors[code];
+		img.attr("src", color + ".jpg").css("width","100%").css("height","100%").data("code",code);
+	}
+}
+
+function save() {
+	var code = encode();
+	window.location = "?hash=" + code;
+}
+function color()  {
+	var available = stock.filter(function (s) { return s > 0;});
+	if (available.length == 0) {
+		alert("Not enough tiles. You are fucked");
+	}
+	var idx;
+	do {
+		idx = Math.floor(Math.random() * stock.length);
+	} while (stock[idx] <= 0);
+	stock[idx] = stock[idx] - 1;
+	return idx;
+}
+
+function colorize() {
+	shuffle(tiles);
+	while (tiles.length > 0) {
+		var id = tiles.pop();
+		var idx = color();
+		var c = colors[idx];
+		$("#" + id).find("img").attr("src",c + ".jpg").css("width","100%").css("height","100%")
+		.data("code",idx);
+	}
+}
+
+function randomize() {
+	colorize();
+	save();
+}
+function draw() {
+	var div = document.querySelector("#tiling");
+
+
+	//how much complete tiles ?
+	var nbWidth = width / size;
+	var nbHeight = height / size;
+	$("#text").append(
+		"<ul>" +
+			"<li>Rows: " + nbWidth+ "</li>" +
+			"<li>Columns: " + nbHeight + "</li>" +
+		"</ul>"
+		);
+
+	var buf = "";
+	for (var i = 0; i < nbWidth; i++) {
+		buf += "<tr>";
+		for (var j = 0; j < nbHeight; j++) {
+			var id = "" + i + "x" + j;
+			var cls = "";
+
+			//The incomplete first tile if needed
+			if (j == 0 && width % size != 0) {
+				cls += " first_col";
+			} else {
+				cls += "full_col";
+			}
+
+			if (i == Math.floor(nbWidth) && height % size != 0) {
+				cls += " last_row";
+			} else {
+				cls += " full_row";
+			}
+			buf += "<td class='" + cls + "' id='" + id + "'><img></td>";
+			tiles.push(id);
+		}
+		buf += "</tr>";
+	}
+	$("#tiling").append(buf);
+	$(".full_col").css("width",size);
+	$(".full_row").css("height",size);
+	$(".first_col").css("width",width % size);
+	$(".last_row").css("height",height % size);
+}
+
+$( document ).ready(function () {
+	draw();
+
+	var buf = $("#text").find("ul")
+	buf.append("<li>" + $("td").length + " tiles</li>");
+	var long = $("table").width();
+	var larg = $("table").height();
+	buf.append("<li>" + (long / cm) + "cm x " + (larg / cm) + "cm");
+
+	if (qs("hash")) {
+		decode(qs("hash"));
+	}
+	else {
+		randomize();
+		var left = "";
+		colors.forEach(function (c, idx) {
+			left += stock[idx] + " " + c + "; "
+		})
+		buf.append("<li>Stock: " + left);
+	}
+})
+</script>
+</body>
+</html>
+
